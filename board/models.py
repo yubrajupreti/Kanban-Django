@@ -69,7 +69,7 @@ class Comment(TimeStampedModel):
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="commentor")
     text = models.TextField()
 
-    # class Meta:
-    #     ordering = ["created"]
+    class Meta:
+        ordering = ["created"]
 
 
