@@ -9,13 +9,16 @@ def card_attachment_image_path(instance, filename):
 class Board(TimeStampedModel):
     name = models.CharField(max_length=50)
     owner = models.ForeignKey(
-        User, on_delete=models.RESTRICT, related_name="board_owner"
+        User, on_delete=models.RESTRICT, related_name="board_owner",blank=True
     )
-    members = models.ManyToManyField(User, related_name="board_member")
+    members = models.ManyToManyField(User, related_name="board_member",null=True)
 
 
     def __str__(self):
         return self.name
+    
+
+ 
 
 
 class Tag(TimeStampedModel):
@@ -50,7 +53,7 @@ class Card(TimeStampedModel):
     description = models.TextField(blank=True)
     priority = models.CharField(max_length=15, choices=PRIORITY, default='medium')
     tags = models.ManyToManyField(Tag, related_name="card_tag")
-    assignees = models.ManyToManyField(User, related_name="card_assigned")
+    assignees = models.ForeignKey(User, on_delete=models.PROTECT, related_name="card_assigned",null=True,blank=True)
     attachmnet=models.FileField(upload_to=card_attachment_image_path,blank=True,null=True)
 
     repoter=models.ForeignKey(User,on_delete=models.RESTRICT)
