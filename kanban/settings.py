@@ -52,7 +52,8 @@ INSTALLED_APPS = [
 
     'user',
     'authentication',
-    'base'
+    'base',
+    'board'
 
 ]
 

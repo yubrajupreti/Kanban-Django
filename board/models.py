@@ -6,7 +6,7 @@ from user.models import User
 def card_attachment_image_path(instance, filename):
     return "card/attachment/{}/{}".format(instance.id, filename)
 
-class Board(TimeStampModel):
+class Board(TimeStampedModel):
     name = models.CharField(max_length=50)
     owner = models.ForeignKey(
         User, on_delete=models.RESTRICT, related_name="board_owner"
@@ -48,10 +48,10 @@ class Card(TimeStampedModel):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    priority = models.CharField(max_length=1, choices=PRIORITY, default='medium')
+    priority = models.CharField(max_length=15, choices=PRIORITY, default='medium')
     tags = models.ManyToManyField(Tag, related_name="card_tag")
     assignees = models.ManyToManyField(User, related_name="card_assigned")
-    attachmnet=models.FieldFile(upload_to=card_attachment_image_path,blank=True,null=True)
+    attachmnet=models.FileField(upload_to=card_attachment_image_path,blank=True,null=True)
 
     repoter=models.ForeignKey(User,on_delete=models.RESTRICT)
     column = models.ForeignKey(Column, on_delete=models.CASCADE, related_name="card_column")

@@ -20,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = ['id','email','first_name','middle_name','last_name','password','contact_number','gender',
-                  'is_active','is_verified','is_staff','is_admin'
+                  'is_active','is_verified','is_staff','is_admin','profile_picture'
                   ]
         model = User
         extra_kwargs = {

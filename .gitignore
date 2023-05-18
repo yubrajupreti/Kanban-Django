@@ -34,4 +34,4 @@ yarn-error.log*
 static
 /test
 db.sqlite3
-/Tourism/.env
+/kanban/.env
