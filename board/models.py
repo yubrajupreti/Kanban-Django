@@ -33,7 +33,7 @@ class Tag(TimeStampedModel):
 class Column(TimeStampedModel):
     title = models.CharField(max_length=255)
     board = models.ForeignKey("Board", on_delete=models.CASCADE, related_name="column")
-    order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
+    order = models.PositiveIntegerField(default=0, editable=True, db_index=True)
 
     class Meta:
         ordering = ["order"]
@@ -52,13 +52,13 @@ class Card(TimeStampedModel):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     priority = models.CharField(max_length=15, choices=PRIORITY, default='medium')
-    tags = models.ManyToManyField(Tag, related_name="card_tag")
+    tags = models.ManyToManyField(Tag, related_name="card_tag",null=True)
     assignees = models.ForeignKey(User, on_delete=models.PROTECT, related_name="card_assigned",null=True,blank=True)
-    attachmnet=models.FileField(upload_to=card_attachment_image_path,blank=True,null=True)
+    attachmnet= models.FileField(upload_to=card_attachment_image_path,blank=True,null=True)
 
     repoter=models.ForeignKey(User,on_delete=models.RESTRICT)
     column = models.ForeignKey(Column, on_delete=models.CASCADE, related_name="card_column")
-    order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
+    order = models.PositiveIntegerField(default=0, editable=True, db_index=True)
 
     class Meta:
         ordering = ["order"]

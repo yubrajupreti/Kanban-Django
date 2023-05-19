@@ -98,20 +98,31 @@ class TagSerializer(serializers.ModelSerializer):
 
 class ColumnSerializer(serializers.ModelSerializer):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'view' in self.context and self.context['view'].action in ['create']:
+            self.fields.pop('order', None)
+
     class Meta:
         model=Column
         fields='__all__'
 
     
-    def commit_column_changes(self, start_value, end_value, nature_value, instance, validated_data):
+    def commit_column_changes(self, start_value, end_value, nature_value,condition_value, instance, validated_data):
         try:
             with transaction.atomic():
+                # increase if the previous order was greater than recent changing order and vice versa
+                start_value=start_value+1 if condition_value==1 else start_value-1
 
                 for i in range(start_value,end_value,nature_value):
-                    single_column=Column.objects.get(board=instance.board,order=i)
-                    single_column.order=i+1
+
+                    # decrease by 1, if the previous order was greater than recent changing order and vice versa
+                    order_value=i-1 if condition_value==1 else i+1
+                    single_column=Column.objects.get(board=instance.board,order=order_value)
+                    single_column.order=i
                     single_column.save()
-                
+
+                # update actual instance
                 for attr, value in validated_data.items():
                     setattr(instance, attr, value)
         
@@ -126,16 +137,21 @@ class ColumnSerializer(serializers.ModelSerializer):
 
     
     def update(self, instance, validated_data):
-        
+
         if 'order' in validated_data:
             recent_order=validated_data.get('order')
             previous_order=instance.order
-
             if previous_order>recent_order:
-                instance=self.commit_column_changes(recent_order,previous_order,1,instance,validated_data)
+                instance=self.commit_column_changes(
+                    previous_order,recent_order,-1,1,instance,validated_data
+                    )
 
-            elif previous_order>recent_order:
-                instance=self.commit_column_changes(previous_order,recent_order,-1,instance,validated_data)
+            elif previous_order<recent_order:
+                # 1 indicate the nature of loop
+                # 0 indicate the order condition
+                instance=self.commit_column_changes(
+                    previous_order,recent_order,1,0,instance,validated_data
+                    )
 
             return instance
 
@@ -156,6 +172,63 @@ class CardSerializer(serializers.ModelSerializer):
     class Meta:
         model=Card
         fields='__all__'
+
+    def commit_card_changes(self, start_value, end_value, nature_value,condition_value, instance, validated_data):
+        try:
+            with transaction.atomic():
+                # increase if the previous order was greater than recent changing order and vice versa
+                start_value=start_value+1 if condition_value==1 else start_value-1
+                for i in range(start_value,end_value,nature_value):
+
+                    # decrease by 1, if the previous order was greater than recent changing order and vice versa
+                    order_value=i-1 if condition_value==1 else i+1
+                    single_column=Card.objects.get(column=instance.column,order=order_value)
+                    single_column.order=i
+                    single_column.save()
+
+                # update actual instance
+                for attr, value in validated_data.items():
+                    setattr(instance, attr, value)
+        
+                instance.save()
+        
+            return instance
+        
+        except Exception as e:
+            transaction.rollback()
+            error_message = "An error occurred during the update process."
+            raise ValidationError(detail=error_message)
+
+    
+    def update(self, instance, validated_data):
+
+        if 'order' in validated_data:
+            recent_order=validated_data.get('order')
+            previous_order=instance.order
+            if previous_order>recent_order:
+                instance=self.commit_card_changes(
+                    previous_order,recent_order,-1,1,instance,validated_data
+                    )
+
+            elif previous_order<recent_order:
+                # 1 indicate the nature of loop
+                # 0 indicate the order condition
+                instance=self.commit_card_changes(
+                    previous_order,recent_order,1,0,instance,validated_data
+                    )
+
+            return instance
+
+        else:
+
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            
+            instance.save()
+
+            return instance
+            
+
 
 class CommentSerializer(serializers.ModelSerializer):
 
