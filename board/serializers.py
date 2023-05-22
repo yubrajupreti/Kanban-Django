@@ -90,11 +90,19 @@ class BoardSerializer(serializers.ModelSerializer):
         return instance
 
 
+
 class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model=Tag
         fields='__all__'
+
+    def validate(self, attrs):
+        tag_name=attrs.get('name')
+
+        if Tag.objects.filter(name=tag_name).exists():
+            error_message = f'Tag with {tag_name} already exists.'
+            raise ValidationError(detail=error_message)
 
 class ColumnSerializer(serializers.ModelSerializer):
 
@@ -168,6 +176,10 @@ class ColumnSerializer(serializers.ModelSerializer):
         
 
 class CardSerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'view' in self.context and self.context['view'].action in ['create']:
+            self.fields.pop('order', None)
 
     class Meta:
         model=Card
@@ -227,6 +239,23 @@ class CardSerializer(serializers.ModelSerializer):
             instance.save()
 
             return instance
+        
+    def validate(self, attrs):
+        assigned=attrs.get('assignees','')
+        reporter=attrs.get('reporter','')
+        column=attrs.get('column')
+        board_member=column.board.members.all()
+
+        if assigned:
+            if assigned.id not in board_member:
+                error_message = "Assigned user is not a member of board"
+                raise ValidationError(detail=error_message)
+        if reporter:
+            if reporter.id not in board_member:
+                error_message = "Assigned user is not a member of board"
+                raise ValidationError(detail=error_message)
+
+        return attrs
             
 
 
@@ -235,3 +264,13 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model=Comment
         fields='__all__'
+
+    
+    def validate(self, attrs):
+        author=attrs.get('author')
+        card=attrs.get('card')
+        board_members=card.column.board.members.all()
+
+        if author.id not in board_members:
+            error_message = "You are not authorized to comment. Should be board member."
+            raise ValidationError(detail=error_message)
