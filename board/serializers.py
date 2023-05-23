@@ -1,9 +1,11 @@
-from rest_framework import serializers
+
 from django.db import transaction
+
+from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+
+
 from user.serializers import UserDetailSerializer
-
-
 from .models import *
 
 class BoardDetailSerializer(serializers.ModelSerializer):
@@ -13,6 +15,9 @@ class BoardDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model=Board
         fields='__all__'
+
+
+    
 
 class BoardSerializer(serializers.ModelSerializer):
 
@@ -112,6 +117,7 @@ class TagSerializer(serializers.ModelSerializer):
         if Tag.objects.filter(name=tag_name).exists():
             error_message = f'Tag with {tag_name} already exists.'
             raise ValidationError(detail=error_message)
+        return attrs
 
 class ColumnSerializer(serializers.ModelSerializer):
 

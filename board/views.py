@@ -1,10 +1,13 @@
-from rest_framework import viewsets
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
+
+from rest_framework import viewsets
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 
 
 from .serializers import *
@@ -25,6 +28,19 @@ class BoardView(viewsets.ModelViewSet):
             owner=self.request.user
             )
 
+    @action(methods=['get'], detail=True,permission_classes=[IsAuthenticated])
+    def members(self, request,pk):
+
+        board=get_object_or_404(Board,id=pk)
+        excluded_filter = Q(id__in=[user.id for user in board.members.all() ])
+
+        user_instance=User.objects.exclude(excluded_filter)
+
+        if user_instance:
+            user_instance_serialized=UserDetailSerializer(user_instance,many=True)
+            return Response(user_instance_serialized.data)
+        
+        return Response({"detail":"No member to do."})
 class TagView(viewsets.ModelViewSet):
     
     queryset=Tag.objects.all()
@@ -45,6 +61,7 @@ class ColumnView(viewsets.ModelViewSet):
         else:
             serializer.save(order=1)
 
+   
 class CardView(viewsets.ModelViewSet):
     
     queryset=Card.objects.all()
@@ -92,23 +109,28 @@ class CommentView(viewsets.ModelViewSet):
 class BoardDetailView(APIView):
 
     def get(self, request, *args, **kwargs):
+        # get board id and user_id for filter
         board_id=kwargs.get('pk','')
         user_id = request.query_params.get('user_id', '')
 
+        # get board object and serialize
         if board_id:
             board_instance=get_object_or_404(Board,id=board_id)
             board_serialized=BoardDetailSerializer(board_instance)
             board_serialized_data=board_serialized.data.copy()
 
+            # fetch column of respective board
             column_instance=Column.objects.filter(board=board_instance.id)
             if column_instance:
                 board_serialized_data[Column._meta.db_table]=[]
                 column_overall_data=[]
+                # fetch card with respect to column
                 for col_instance in column_instance:
                     column_serialized=ColumnSerializer(col_instance)
                     column_serialized_data=column_serialized.data.copy()
                     column_card=Card.objects.filter(column=col_instance.id)
-
+                    
+                    # filter card if user_id is filter params
                     if user_id:
                         column_card=column_card.filter(assignees__id=user_id)
                     

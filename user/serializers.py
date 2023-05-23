@@ -34,8 +34,6 @@ class UserSerializer(serializers.ModelSerializer):
 
    
 
-
-
 class UserAdminSerializer(UserSerializer):
     class Meta(UserSerializer.Meta):
         fields=UserSerializer.Meta.fields+['user_permissions','groups']
