@@ -18,9 +18,6 @@ class Board(TimeStampedModel):
         return self.name
     
 
- 
-
-
 class Tag(TimeStampedModel):
     name = models.CharField(max_length=150)
     board = models.ForeignKey("Board", on_delete=models.CASCADE, related_name="tags")
@@ -69,7 +66,7 @@ class Card(TimeStampedModel):
 
 class Comment(TimeStampedModel):
     card = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="card_comment")
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="commentor")
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="commentor",blank=True)
     text = models.TextField()
 
     class Meta:

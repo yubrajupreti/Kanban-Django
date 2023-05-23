@@ -267,10 +267,11 @@ class CommentSerializer(serializers.ModelSerializer):
 
     
     def validate(self, attrs):
-        author=attrs.get('author')
         card=attrs.get('card')
         board_members=card.column.board.members.all()
 
-        if author.id not in board_members:
+        if self.context['request'].user not in board_members:
             error_message = "You are not authorized to comment. Should be board member."
             raise ValidationError(detail=error_message)
+        
+        return attrs

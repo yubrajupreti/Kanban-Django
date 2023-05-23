@@ -16,5 +16,7 @@ router.register('comment', CommentView, basename='comment')
 
 urlpatterns = [
 
-	path('', include(router.urls))
+	path('', include(router.urls)),
+	path('board/detail/<int:pk>', BoardDetailView.as_view(), name='board-list-detail'),
+
 ]
