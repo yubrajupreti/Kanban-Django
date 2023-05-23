@@ -204,7 +204,40 @@ class CardSerializer(serializers.ModelSerializer):
     class Meta:
         model=Card
         fields='__all__'
+    
+    def commit_card_column_change(self,previous_column,recent_column,recent_order,instance,validated_data):
+        try:
+            with transaction.atomic():
 
+                # sorting the previous column
+                previous_column_card=Card.objects.filter(column=previous_column)
+                last_index=previous_column_card.count()
+                for i in range(instance.order+1,last_index+1):
+                    single_card=previous_column_card.get(order=i)
+                    single_card.order-=1
+                    single_card.save()
+
+                # sorting the current column of card
+                current_column_card=Card.objects.filter(column=recent_column)
+                current_last_index=current_column_card.count()
+
+                for i in range(current_last_index,recent_order-1,-1):
+                    single_card=current_column_card.get(order=i)
+                    single_card.order+=1
+                    single_card.save()
+
+                # update actual instance
+                for attr, value in validated_data.items():
+                    setattr(instance, attr, value)
+        
+                instance.save()
+        
+            return instance
+        except Exception as e:
+            transaction.rollback()
+            error_message = "An error occurred during the update process."
+            raise ValidationError(detail=error_message)
+        
     def commit_card_changes(self, start_value, end_value, nature_value,condition_value, instance, validated_data):
         try:
             with transaction.atomic():
@@ -233,7 +266,19 @@ class CardSerializer(serializers.ModelSerializer):
 
     
     def update(self, instance, validated_data):
+        if 'column' in validated_data:
+            recent_column=validated_data.get('column')
+            previous_column=instance.column
+            recent_order=validated_data.get('order')
+            if recent_column!=previous_column:
 
+                instance=self.commit_card_column_change(
+                    previous_column,recent_column,recent_order,instance,validated_data
+                    )
+                
+                return instance
+
+            
         if 'order' in validated_data:
             recent_order=validated_data.get('order')
             previous_order=instance.order
@@ -251,14 +296,13 @@ class CardSerializer(serializers.ModelSerializer):
 
             return instance
 
-        else:
 
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            
-            instance.save()
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
 
-            return instance
+        return instance
         
     def validate(self, attrs):
         assigned=attrs.get('assignees','')
@@ -267,11 +311,11 @@ class CardSerializer(serializers.ModelSerializer):
         board_member=column.board.members.all()
 
         if assigned:
-            if assigned.id not in board_member:
+            if assigned not in board_member:
                 error_message = "Assigned user is not a member of board"
                 raise ValidationError(detail=error_message)
         if reporter:
-            if reporter.id not in board_member:
+            if reporter not in board_member:
                 error_message = "Assigned user is not a member of board"
                 raise ValidationError(detail=error_message)
 
