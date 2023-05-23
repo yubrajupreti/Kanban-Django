@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 
 
 from user.serializers import UserDetailSerializer
+from .utils import CardSorting
 from .models import *
 
 class BoardDetailSerializer(serializers.ModelSerializer):
@@ -119,7 +120,7 @@ class TagSerializer(serializers.ModelSerializer):
             raise ValidationError(detail=error_message)
         return attrs
 
-class ColumnSerializer(serializers.ModelSerializer):
+class ColumnSerializer(serializers.ModelSerializer,CardSorting):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -131,49 +132,24 @@ class ColumnSerializer(serializers.ModelSerializer):
         fields='__all__'
 
     
-    def commit_column_changes(self, start_value, end_value, nature_value,condition_value, instance, validated_data):
-        try:
-            with transaction.atomic():
-                # increase if the previous order was greater than recent changing order and vice versa
-                start_value=start_value+1 if condition_value==1 else start_value-1
-
-                for i in range(start_value,end_value,nature_value):
-
-                    # decrease by 1, if the previous order was greater than recent changing order and vice versa
-                    order_value=i-1 if condition_value==1 else i+1
-                    single_column=Column.objects.get(board=instance.board,order=order_value)
-                    single_column.order=i
-                    single_column.save()
-
-                # update actual instance
-                for attr, value in validated_data.items():
-                    setattr(instance, attr, value)
-        
-                instance.save()
-        
-            return instance
-        
-        except Exception as e:
-            transaction.rollback()
-            error_message = "An error occurred during the update process."
-            raise ValidationError(detail=error_message)
-
-    
     def update(self, instance, validated_data):
 
         if 'order' in validated_data:
             recent_order=validated_data.get('order')
             previous_order=instance.order
             if previous_order>recent_order:
-                instance=self.commit_column_changes(
-                    previous_order,recent_order,-1,1,instance,validated_data
+                
+                instance=self.commit_order_changes(
+                    previous_order,recent_order,-1,1,instance,validated_data,0
                     )
 
             elif previous_order<recent_order:
                 # 1 indicate the nature of loop
                 # 0 indicate the order condition
-                instance=self.commit_column_changes(
-                    previous_order,recent_order,1,0,instance,validated_data
+                # last 0 indicate the column sorting in generic method
+                # CardSorting class method is revoked
+                instance=self.commit_order_changes(
+                    previous_order,recent_order,1,0,instance,validated_data,0
                     )
 
             return instance
@@ -195,7 +171,8 @@ class CardDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model=Card
         fields='__all__'
-class CardSerializer(serializers.ModelSerializer):
+
+class CardSerializer(serializers.ModelSerializer,CardSorting):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if 'view' in self.context and self.context['view'].action in ['create']:
@@ -205,65 +182,6 @@ class CardSerializer(serializers.ModelSerializer):
         model=Card
         fields='__all__'
     
-    def commit_card_column_change(self,previous_column,recent_column,recent_order,instance,validated_data):
-        try:
-            with transaction.atomic():
-
-                # sorting the previous column
-                previous_column_card=Card.objects.filter(column=previous_column)
-                last_index=previous_column_card.count()
-                for i in range(instance.order+1,last_index+1):
-                    single_card=previous_column_card.get(order=i)
-                    single_card.order-=1
-                    single_card.save()
-
-                # sorting the current column of card
-                current_column_card=Card.objects.filter(column=recent_column)
-                current_last_index=current_column_card.count()
-
-                for i in range(current_last_index,recent_order-1,-1):
-                    single_card=current_column_card.get(order=i)
-                    single_card.order+=1
-                    single_card.save()
-
-                # update actual instance
-                for attr, value in validated_data.items():
-                    setattr(instance, attr, value)
-        
-                instance.save()
-        
-            return instance
-        except Exception as e:
-            transaction.rollback()
-            error_message = "An error occurred during the update process."
-            raise ValidationError(detail=error_message)
-        
-    def commit_card_changes(self, start_value, end_value, nature_value,condition_value, instance, validated_data):
-        try:
-            with transaction.atomic():
-                # increase if the previous order was greater than recent changing order and vice versa
-                start_value=start_value+1 if condition_value==1 else start_value-1
-                for i in range(start_value,end_value,nature_value):
-
-                    # decrease by 1, if the previous order was greater than recent changing order and vice versa
-                    order_value=i-1 if condition_value==1 else i+1
-                    single_column=Card.objects.get(column=instance.column,order=order_value)
-                    single_column.order=i
-                    single_column.save()
-
-                # update actual instance
-                for attr, value in validated_data.items():
-                    setattr(instance, attr, value)
-        
-                instance.save()
-        
-            return instance
-        
-        except Exception as e:
-            transaction.rollback()
-            error_message = "An error occurred during the update process."
-            raise ValidationError(detail=error_message)
-
     
     def update(self, instance, validated_data):
         if 'column' in validated_data:
@@ -271,28 +189,23 @@ class CardSerializer(serializers.ModelSerializer):
             previous_column=instance.column
             recent_order=validated_data.get('order')
             if recent_column!=previous_column:
-
                 instance=self.commit_card_column_change(
                     previous_column,recent_column,recent_order,instance,validated_data
                     )
                 
                 return instance
-
             
         if 'order' in validated_data:
             recent_order=validated_data.get('order')
             previous_order=instance.order
             if previous_order>recent_order:
-                instance=self.commit_card_changes(
-                    previous_order,recent_order,-1,1,instance,validated_data
-                    )
+                instance=self.commit_order_changes(previous_order,recent_order,-1,1,instance,validated_data,1)
+
 
             elif previous_order<recent_order:
                 # 1 indicate the nature of loop
                 # 0 indicate the order condition
-                instance=self.commit_card_changes(
-                    previous_order,recent_order,1,0,instance,validated_data
-                    )
+                instance=self.commit_order_changes(previous_order,recent_order,1,0,instance,validated_data,1)
 
             return instance
 
