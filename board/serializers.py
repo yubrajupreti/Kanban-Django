@@ -1,9 +1,18 @@
 from rest_framework import serializers
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
+from user.serializers import UserDetailSerializer
 
 
 from .models import *
+
+class BoardDetailSerializer(serializers.ModelSerializer):
+    members=UserDetailSerializer(many=True,read_only=True)
+    owner=UserDetailSerializer(read_only=True)
+
+    class Meta:
+        model=Board
+        fields='__all__'
 
 class BoardSerializer(serializers.ModelSerializer):
 
@@ -174,7 +183,12 @@ class ColumnSerializer(serializers.ModelSerializer):
             
 
         
-
+class CardDetailSerializer(serializers.ModelSerializer):
+    assignees=UserDetailSerializer(read_only=True)
+    repoter=UserDetailSerializer(read_only=True)
+    class Meta:
+        model=Card
+        fields='__all__'
 class CardSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -260,7 +274,7 @@ class CardSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-
+    author=UserDetailSerializer(read_only=True)
     class Meta:
         model=Comment
         fields='__all__'
@@ -275,3 +289,5 @@ class CommentSerializer(serializers.ModelSerializer):
             raise ValidationError(detail=error_message)
         
         return attrs
+    
+

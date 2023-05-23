@@ -13,7 +13,12 @@ class BoardView(viewsets.ModelViewSet):
     
     queryset=Board.objects.all()
     serializer_class=BoardSerializer
-
+    
+    def get_serializer_class(self):
+        if self.action in ['create','update']:
+            return BoardSerializer
+        else:
+            return BoardDetailSerializer
 
     def perform_create(self, serializer):
         serializer.save(
@@ -47,6 +52,13 @@ class CardView(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['column','assignees__uuid']
     search_fields = ['column']
+
+    def get_serializer_class(self):
+        if self.action in ['list','retrieve']:
+            return CardDetailSerializer
+        else:
+            return CardSerializer
+
 
     def perform_create(self, serializer):
         last_instance=Column.objects.filter(column=serializer.initial_data['column']).last()
@@ -85,7 +97,7 @@ class BoardDetailView(APIView):
 
         if board_id:
             board_instance=get_object_or_404(Board,id=board_id)
-            board_serialized=BoardSerializer(board_instance)
+            board_serialized=BoardDetailSerializer(board_instance)
             board_serialized_data=board_serialized.data.copy()
 
             column_instance=Column.objects.filter(board=board_instance.id)
@@ -100,9 +112,8 @@ class BoardDetailView(APIView):
                     if user_id:
                         column_card=column_card.filter(assignees__id=user_id)
                     
-                    column_card_serialized=CardSerializer(column_card,many=True)
+                    column_card_serialized=CardDetailSerializer(column_card,many=True)
                     column_serialized_data[Card._meta.db_table]=column_card_serialized.data
-                    breakpoint()
 
                     column_overall_data.append(column_serialized_data)
                 

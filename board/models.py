@@ -17,6 +17,8 @@ class Board(TimeStampedModel):
     def __str__(self):
         return self.name
     
+    
+    
 
 class Tag(TimeStampedModel):
     name = models.CharField(max_length=150)

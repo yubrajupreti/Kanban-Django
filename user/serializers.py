@@ -49,5 +49,16 @@ class UserAdminSerializer(UserSerializer):
         }
 
 
+class UserDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = ['id','email','first_name','middle_name','last_name','profile_picture']
+        model = User
 
+    
+    def create(self, validated_data):
+        pass
+
+    def update(self, instance, validated_data):
+        pass
+       
 
