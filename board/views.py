@@ -8,14 +8,37 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-
+from .permission import *
 
 from .serializers import *
 
 class BoardView(viewsets.ModelViewSet):
     
     queryset=Board.objects.all()
-    serializer_class=BoardSerializer
+
+    def get_permissions(self):
+
+        """
+        Providing Permissions According To UserType
+        """
+
+        if self.action in ['destroy', 'update', 'partial_update']:
+            permissions_classes = [IsOwnerOrAdmin]
+
+
+        elif self.action =='retrieve':
+            permissions_classes = [IsMemberOrAdmin]
+
+        elif self.action=='create':
+            permissions_classes=[IsAuthenticated]
+        
+        elif self.action=='list':
+            permissions_classes=[IsAdmin]
+
+        else:
+            return super().get_permissions()
+
+        return [permissions() for permissions in permissions_classes]
     
     def get_serializer_class(self):
         if self.action in ['create','update']:
@@ -28,7 +51,7 @@ class BoardView(viewsets.ModelViewSet):
             owner=self.request.user
             )
 
-    @action(methods=['get'], detail=True,permission_classes=[IsAuthenticated])
+    @action(methods=['get'], detail=True,permission_classes=[IsOwnerOrAdmin])
     def members(self, request,pk):
 
         board=get_object_or_404(Board,id=pk)
@@ -41,10 +64,31 @@ class BoardView(viewsets.ModelViewSet):
             return Response(user_instance_serialized.data)
         
         return Response({"detail":"No member to do."})
+    
 class TagView(viewsets.ModelViewSet):
     
     queryset=Tag.objects.all()
     serializer_class=TagSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['board__id']
+    search_fields = ['board__id']
+
+    def get_permissions(self):
+
+        """
+        Providing Permissions According To UserType
+        """
+
+        if self.action in ['destroy', 'update', 'partial_update','retrieve','create']:
+            permissions_classes = [IsMemberOrAdmin]
+        
+        elif self.action in ['list']:
+            permissions_classes=[IsAdmin]
+
+        else:
+            return super().get_permissions()
+
+        return [permissions() for permissions in permissions_classes]
 
 class ColumnView(viewsets.ModelViewSet):
     
@@ -53,6 +97,24 @@ class ColumnView(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['board']
     search_fields = ['board']
+
+    def get_permissions(self):
+
+        """
+        Providing Permissions According To UserType
+        """
+
+        if self.action in ['destroy', 'update', 'partial_update','retrieve','create']:
+            permissions_classes = [IsOwnerOrAdmin]
+        
+        elif self.action in ['list']:
+            permissions_classes=[IsAdmin]
+
+        else:
+            return super().get_permissions()
+
+        return [permissions() for permissions in permissions_classes]
+    
 
     def perform_create(self, serializer):
         last_instance=Column.objects.filter(board=serializer.initial_data['board']).last()
@@ -69,6 +131,23 @@ class CardView(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['column','assignees__uuid']
     search_fields = ['column']
+
+    def get_permissions(self):
+
+        """
+        Providing Permissions According To UserType
+        """
+
+        if self.action in ['destroy', 'update', 'partial_update','retrieve','create']:
+            permissions_classes = [IsMemberOrAdmin]
+        
+        elif self.action=='list':
+            permissions_classes=[IsAdmin]
+
+        else:
+            return super().get_permissions()
+
+        return [permissions() for permissions in permissions_classes]
 
     def get_serializer_class(self):
         if self.action in ['list','retrieve']:
@@ -101,13 +180,36 @@ class CommentView(viewsets.ModelViewSet):
     queryset=Comment.objects.all()
     serializer_class=CommentSerializer
 
+    def get_permissions(self):
+
+        """
+        Providing Permissions According To UserType
+        """
+
+        if self.action in ['destroy', 'update', 'partial_update']:
+            permissions_classes = [IsOwnerOrAdmin]
+
+
+        elif self.action in['retrieve','create','list']:
+            permissions_classes = [IsMemberOrAdmin]
+
+       
+
+        else:
+            return super().get_permissions()
+
+        return [permissions() for permissions in permissions_classes]
+
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
 
-class BoardDetailView(APIView):
 
+
+class BoardDetailView(APIView):
+    permission_classes=[IsMemberOrAdmin]
+   
     def get(self, request, *args, **kwargs):
         # get board id and user_id for filter
         board_id=kwargs.get('pk','')
