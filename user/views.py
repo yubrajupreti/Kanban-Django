@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAdminUser,IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.filters import SearchFilter, OrderingFilter
-
+from board.permission import IsAdmin
 
 from .serializers import UserSerializer, UserAdminSerializer
 
@@ -59,7 +59,7 @@ class UserRegisterView(viewsets.ModelViewSet):
 
 
         elif self.action in ['list','retrieve','update','partial_update','destroy']:
-            permissions_classes = [IsAdminUser]
+            permissions_classes = [IsAdmin]
 
         else:
             return super().get_permissions()
@@ -73,7 +73,7 @@ class UserRegisterView(viewsets.ModelViewSet):
             email_body = 'Please verfiy your email - ' + user.email
             current_site = get_current_site(self.request).domain
 
-            absurl = 'http://' + current_site + '/auth/verify/' + "?token=" + str(token) + "&email=" + user.email
+            absurl = 'http://' + current_site + '/api/verify-email/' + "?token=" + str(token) + "&email=" + user.email
             html_content = f'<p>{email_body}</p>\n<a href="{absurl}">Click here</a>'
             msg = EmailMultiAlternatives(subject, email_body, from_email, [to])
             msg.attach_alternative(html_content, "text/html")
@@ -87,7 +87,7 @@ class UserRegisterView(viewsets.ModelViewSet):
     def perform_create(self, serializer):
 
         serializer.validated_data['password'] = make_password((serializer.validated_data['password']))
-        user = serializer.save()
+        user = serializer.save(is_active=True)
         user_data = serializer.data
         headers = self.get_success_headers(serializer.data)
         user = User.objects.get(email=user_data['email'])

@@ -1,6 +1,7 @@
 import jwt
 
 from django.contrib.auth import login, logout
+from django.views.decorators.csrf import get_token
 
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
@@ -36,8 +37,13 @@ class UserLoginView(APIView):
             'is_admin':user.is_active,
 
         }, status=status.HTTP_200_OK)
+        breakpoint()
+        csrf_token = get_token(request)
+
         response.set_cookie('access_token',str(refresh.access_token) , httponly=True, samesite='Lax')
         response.set_cookie('refresh_token',str(refresh) , httponly=True, samesite='Lax')
+        response.set_cookie('csrftoken', csrf_token)
+
 
         return response
 

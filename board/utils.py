@@ -41,7 +41,7 @@ class CardSorting:
             return instance
         except Exception as e:
             transaction.rollback()
-            error_message = "An error occurred during the update process."
+            error_message = {"error":"An error occurred during the update process."}
             raise ValidationError(detail=error_message)
         
     def commit_order_changes(self, start_value, end_value, nature_value,condition_value, instance, validated_data,order_for):
@@ -71,5 +71,5 @@ class CardSorting:
         
         except Exception as e:
             transaction.rollback()
-            error_message = "An error occurred during the update process."
+            error_message = {"error":"An error occurred during the update process."}
             raise ValidationError(detail=error_message)

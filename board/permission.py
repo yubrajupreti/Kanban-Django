@@ -39,7 +39,7 @@ class IsOwnerOrAdmin(BasePermission):
             if view.action=='create':
                 body=json.loads(request._request.body)
                 board_id=body.get('board')
-                board_instance=get_object_or_404(Board,id=column_id)
+                board_instance=get_object_or_404(Board,id=board_id)
             else:
                 column_id=request.parser_context.get('kwargs').get('pk')
                 column_instance=get_object_or_404(Column,id=column_id)

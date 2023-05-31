@@ -157,7 +157,7 @@ class CardView(viewsets.ModelViewSet):
 
 
     def perform_create(self, serializer):
-        last_instance=Column.objects.filter(column=serializer.initial_data['column']).last()
+        last_instance=Card.objects.filter(column=serializer.initial_data['column']).last()
         if last_instance:
             serializer.save(order=last_instance.order+1)
         else:

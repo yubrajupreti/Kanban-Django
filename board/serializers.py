@@ -3,7 +3,7 @@ from django.db import transaction
 
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-
+from rest_framework.generics import get_object_or_404
 
 from user.serializers import UserDetailSerializer
 from .utils import CardSorting
@@ -116,7 +116,7 @@ class TagSerializer(serializers.ModelSerializer):
         tag_name=attrs.get('name')
 
         if Tag.objects.filter(name=tag_name).exists():
-            error_message = f'Tag with {tag_name} already exists.'
+            error_message ={"error":f'Tag with {tag_name} already exists.'}
             raise ValidationError(detail=error_message)
         return attrs
 
@@ -189,6 +189,12 @@ class CardSerializer(serializers.ModelSerializer,CardSorting):
             previous_column=instance.column
             recent_order=validated_data.get('order')
             if recent_column!=previous_column:
+                if recent_column.order>previous_column.order:
+                    if previous_column.order+1!=recent_column.order:
+                        column_apart=get_object_or_404(Column,board=instance.column.board, order=previous_column.order+1)
+                        error=f'Column cannot be skipped. It should be moved to {column_apart.title} column.'
+                        raise ValidationError(detail=error)
+                    
                 instance=self.commit_card_column_change(
                     previous_column,recent_column,recent_order,instance,validated_data
                     )
@@ -221,15 +227,23 @@ class CardSerializer(serializers.ModelSerializer,CardSorting):
         assigned=attrs.get('assignees','')
         reporter=attrs.get('reporter','')
         column=attrs.get('column')
+        order=attrs.get('order','')
         board_member=column.board.members.all()
+
+        if order and column:
+            card_last_order=Card.objects.filter(column=column).last()
+            if order>card_last_order.order:
+                error_message = {"error":"Invalid Order"}
+                raise ValidationError(detail=error_message)
+
 
         if assigned:
             if assigned not in board_member:
-                error_message = "Assigned user is not a member of board"
+                error_message = {"error":"Assigned user is not a member of board"}
                 raise ValidationError(detail=error_message)
         if reporter:
             if reporter not in board_member:
-                error_message = "Assigned user is not a member of board"
+                error_message = {"error":"Reported user is not a member of board"}
                 raise ValidationError(detail=error_message)
 
         return attrs
@@ -248,7 +262,7 @@ class CommentSerializer(serializers.ModelSerializer):
         board_members=card.column.board.members.all()
 
         if self.context['request'].user not in board_members:
-            error_message = "You are not authorized to comment. Should be board member."
+            error_message ={"error": "You are not authorized to comment. Should be board member."}
             raise ValidationError(detail=error_message)
         
         return attrs
